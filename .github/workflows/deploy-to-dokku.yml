@@ -1,0 +1,35 @@
+name: Deploy image to Dokku
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-to-dokku:
+    runs-on: ubuntu-latest
+    environment: default
+
+    steps:
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull Docker image
+        run: docker pull sbaltes/taskboard-x86:latest
+
+      - name: Store Docker image hash
+        run: echo "DOCKER_IMAGE=$(docker inspect --format='{{index .RepoDigests 0}}' sbaltes/taskboard-x86:latest)" >> $GITHUB_ENV
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY_PRIVATE }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H dokku.baltes.cloud >> ~/.ssh/known_hosts
+
+      - name: Deploy to Dokku
+        run: ssh dokku@dokku.baltes.cloud "echo '${{ secrets.DOCKERHUB_TOKEN }}' | dokku registry:login --password-stdin docker.io sbaltes && dokku git:from-image taskboard ${{ env.DOCKER_IMAGE }} && docker logout"

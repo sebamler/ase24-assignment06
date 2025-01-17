@@ -1,0 +1,14 @@
+{
+  "healthchecks": {
+    "web": [
+      {
+        "type": "startup",
+        "name": "Spring Boot Actuator Health Check",
+        "initialDelay": 40,
+        "path": "/actuator/health",
+        "port": 8080,
+        "content": "{\"status\":\"UP\"}"
+      }
+    ]
+  }
+}
