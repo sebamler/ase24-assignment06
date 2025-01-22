@@ -71,7 +71,7 @@ docker build -t taskboard:latest .
 ```shell
 docker network create container-net
 docker run -d --name db --net container-net -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16-alpine
-docker run --net container-net -e SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/postgres -e SPRING_DATASOURCE_USERNAME=postgres -e SPRING_DATASOURCE_PASSWORD=postgres -it --rm taskboard:latest
+docker run --net container-net -e SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/postgres -e SPRING_DATASOURCE_USERNAME=postgres -e SPRING_DATASOURCE_PASSWORD=postgres -p 8080:8080  -it --rm taskboard:latest
 ```
 
 `-it`  runs a container in interactive mode with a pseudo-TTY (terminal).
