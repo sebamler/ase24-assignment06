@@ -63,7 +63,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 #### Building an app image from the Dockerfile
 
 ```shell
-docker build taskboard:latest .
+docker build -t taskboard:latest .
 ```
 
 #### Create and run a Docker container based on the image (start DB container first)
