@@ -1,5 +1,6 @@
 package de.unibayreuth.se.taskboard.data.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.unibayreuth.se.taskboard.business.domain.User;
 import de.unibayreuth.se.taskboard.business.exceptions.DuplicateNameException;
 import de.unibayreuth.se.taskboard.business.exceptions.UserNotFoundException;
@@ -10,7 +11,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Primary;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +26,7 @@ public class UserPersistenceServiceEventSourcingImpl implements UserPersistenceS
     private final UserRepository userRepository;
     private final UserEntityMapper userEntityMapper;
     private final EventRepository eventRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     public void clear() {
@@ -51,14 +56,31 @@ public class UserPersistenceServiceEventSourcingImpl implements UserPersistenceS
 
     @NonNull
     @Override
+    @Transactional
     public User upsert(User user) throws UserNotFoundException, DuplicateNameException {
-        // TODO: Implement upsert
-        /*
-        The upsert method in the UserPersistenceServiceEventSourcingImpl class handles both the creation and updating of users.
-        If the user ID is null, it creates a new user by generating a new UUID, saving an insert event, and returning the newly created user.
-        If the user ID is not null, it updates the existing user by finding it in the repository, updating its fields, saving an update event, and returning the updated user.
-        In both cases, it uses the EventRepository to log the changes and the UserRepository to persist the user data.
-        */
-        return new User("Firstname Lastname");
+        if (user.getId() == null) {
+            // Create a new user
+            if (userRepository.existsByName(user.getName())) {
+                throw new DuplicateNameException("User with name " + user.getName() + " already exists.");
+            }
+            user.setId(UUID.randomUUID());
+            user.setCreatedAt(LocalDateTime.now(ZoneId.of("UTC")));
+            UserEntity userEntity = userEntityMapper.toEntity(user);
+            UserEntity savedEntity = userRepository.saveAndFlush(userEntity);
+
+            // Log the INSERT event
+            eventRepository.saveAndFlush(EventEntity.insertEventOf(user, null, objectMapper));
+            return userEntityMapper.fromEntity(savedEntity);
+        }
+
+        // Update an existing user
+        UserEntity existingUserEntity = userRepository.findById(user.getId())
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + user.getId() + " does not exist."));
+        existingUserEntity.setName(user.getName());
+        UserEntity updatedEntity = userRepository.saveAndFlush(existingUserEntity);
+
+        // Log the UPDATE event
+        eventRepository.saveAndFlush(EventEntity.updateEventOf(user, null, objectMapper));
+        return userEntityMapper.fromEntity(updatedEntity);
     }
 }
